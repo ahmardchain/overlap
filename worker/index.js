@@ -48,7 +48,8 @@ export async function handleApi(request,env){
    if(!env.CMC_API_KEY)fail('CoinMarketCap is not connected. Add CMC_API_KEY to enable historical comparisons.',503);
    const series={};const statuses=[];
    for(const id of settings.ids){
-    const params=new URLSearchParams({id:String(CATALOG[id]),time_start:settings.start+'T23:59:00.000Z',time_end:settings.end+'T23:59:59.999Z',interval:'24h',convert:'USD',skip_invalid:'false'});
+    const firstInterval=new Date(Date.parse(settings.start)-DAY).toISOString().slice(0,10);
+    const params=new URLSearchParams({id:String(CATALOG[id]),time_start:firstInterval+'T23:59:00.000Z',time_end:settings.end+'T23:59:59.999Z',interval:'24h',convert:'USD',skip_invalid:'false'});
     const r=await upstream('https://pro-api.coinmarketcap.com/v3/cryptocurrency/quotes/historical?'+params,{headers:{'X-CMC_PRO_API_KEY':env.CMC_API_KEY}});
     if(r.status?.error_code)fail('CoinMarketCap could not fulfill this request. Check API permissions and date coverage.',502);
     series[id]=r.data?.id?r.data:r.data?.[CATALOG[id]];statuses.push({asset:id,timestamp:r.status?.timestamp,credits:r.status?.credit_count});
