@@ -1,14 +1,19 @@
 # Research integration
 
-Server routes: GET /api/status, POST /api/interpret, POST /api/research.
-Set CMC_API_KEY and TYPESAFE_API_KEY as secret production environment variables, then redeploy. Never place keys in browser code. Credentials were unavailable during implementation; live provider success and plan entitlements remain unverified.
+Routes: `GET /api/status`, `POST /api/interpret`, `POST /api/research`. Set `CMC_API_KEY` and `TYPESAFE_API_KEY` as server-side Vercel environment variables. Never expose keys to browser code or commits.
 
-CMC: https://coinmarketcap.com/api/documentation/pro-api-reference/cryptocurrency#ohlcv-historical
-/v2/cryptocurrency/ohlcv/historical, stable IDs BTC=1 ETH=1027 SOL=5426 LINK=1975. Daily UTC close, time_start shifted back one day because it is exclusive. One bounded request per asset, no more than 366 calendar days. Incomplete current UTC day excluded. Provider errors or invalid response shapes stop the comparison. A returned valid empty quote array represents zero returned observations; no cause of omission is inferred. Data is not filled. Weekly is every seventh daily close from requested start, not weekly OHLCV. Output includes raw closes, excluded dates/assets, settings, retrieval timestamps and provider status metadata. Charts normalize at first shared date. No shared date yields no normalization.
+## CoinMarketCap data
 
-Jev: https://docs.typesafe.ai/api.md and https://docs.typesafe.ai/cookbooks/function_calling.md
-POST /v1/systemone with jev-latest. Parallel Choice questions select supported asset combinations, trailing duration, sampling, supported task. Includes no-match branches. Arbitrary date expressions and unlisted durations defer to manual controls. All accepted answers become a review proposal; only a human confirmation updates controls, and Inspect coverage is a separate request. Confidence threshold 0.8 is a provisional UI caution, not a tested correctness guarantee.
+`/v3/cryptocurrency/quotes/historical` is documented on Basic for up to one year of daily history: https://coinmarketcap.com/api/documentation/pro-api-reference/cryptocurrency#quotes-historical
 
-Source state remains session-only. No scheduled fetches. Site remains private. Before wider sharing, add per-user quotas and evaluate Jev prompts with real credentials.
+One request per selected asset uses stable CMC IDs (BTC=1, ETH=1027, SOL=5426, LINK=1975). `time_start` is 23:59 UTC of the first requested date, `time_end` is 23:59:59 UTC of the last, and `interval=24h` requests an end-of-day price quote for each date. These historical prices are **not** OHLCV closing prices. The provider returns the nearest available quote to each target time. The app accepts positive USD prices on exactly the requested UTC dates, excludes dates missing a valid price for any selected asset, and indexes every asset to 100 at the first shared date. Weekly samples every seventh requested date, not a weekly candle. The export records the provider endpoint, retrieval times, raw prices, and excluded dates. Provider errors never turn into demo prices.
 
-Validation: 10 tests passed including shared-date normalization, invalid dates/IDs, provider shape failure, missing key handling, exclusive start and provenance, and Jev review-only behavior. Provider calls were mocked in tests. Browser verified that unconfigured live mode has no synthetic chart and returns an actionable error. Original export-download automation limitation remains.
+Only completed UTC dates within the past year are accepted to stay inside the Basic plan's documented daily limit. Quotes can be absent even within that span; an empty valid quote array becomes zero observations, without guessing a cause. A 403 can still reflect account-level restrictions, so a live 200 response is the final access check.
+
+## TypeSafe Jev
+
+The TypeSafe reference is https://docs.typesafe.ai/api.md. Jev turns a natural-language question into proposed supported assets, duration, and sampling. Code validates the proposal, requires a human confirmation, and only fetches CMC data when the person separately inspects coverage. Jev does not produce or alter the prices.
+
+## Verification
+
+Run `node --test tests/research.test.mjs tests/sites-worker.test.mjs` and `npm run build`. Tests use fixture provider responses. Live validation should confirm a 200 response and source metadata from CMC on the published `/api/research` route.
