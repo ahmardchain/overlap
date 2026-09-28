@@ -7,6 +7,10 @@ test('shared dates use the first shared baseline and preserve gaps',()=>{
  const result=buildStudy(settings,{btc:{id:1,quotes:[q('2026-01-01',10),q('2026-01-02',20),q('2026-01-03',30)]},eth:{id:1027,quotes:[q('2026-01-02',100),q('2026-01-03',80)]}});
  assert.equal(result.baseline,'2026-01-02');assert.equal(result.shared,2);assert.equal(result.rows[0].btc,null);assert.equal(result.rows[1].btc,100);assert.equal(result.rows[2].btc,150);assert.equal(result.rows[2].eth,80);assert.deepEqual(result.excluded,[{date:'2026-01-01',missingAssets:['eth']}]);
 });
+test('a newly tracked asset reveals the shorter shared period without backfilling',()=>{
+ const result=buildStudy({...settings,ids:['btc','tread']},{btc:{id:1,quotes:[q('2026-01-01',10),q('2026-01-02',20),q('2026-01-03',30)]},tread:{id:42319,quotes:[q('2026-01-03',5)]}});
+ assert.deepEqual(result.sharedDates,['2026-01-03']);assert.deepEqual(result.excluded.map(x=>x.missingAssets),[['tread'],['tread']]);assert.equal(result.rows[2].tread,100);assert.equal(result.rows[0].btc,null);
+});
 test('invalid dates, future periods, unsupported IDs and oversized requests fail',()=>{
  for(const patch of [{start:'2026-02-30'},{end:'2099-01-01'},{ids:['btc','unknown']},{start:'2010-01-01'}])assert.throws(()=>validateSettings({...settings,...patch}));
 });
