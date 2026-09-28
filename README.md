@@ -39,10 +39,11 @@ Requires a recent Node.js release with `fetch`, `Response.json` and `AbortSignal
 ```sh
 npm ci
 cp .env.example .env.local
+set -a; . ./.env.local; set +a
 npm run dev
 ```
 
-Set `CMC_API_KEY` and `TYPESAFE_API_KEY` as **server-side** environment variables on the deployment. `VITE_` variables are embedded in browser bundles and must not be used for secrets. The Vite development server displays the frontend; for local live API testing, serve the Worker/API adapter with a compatible runtime or use the deployed app. Without provider keys, the labeled illustrative mode remains available; a live request returns a configuration error.
+Set `CMC_API_KEY` and `TYPESAFE_API_KEY` as **server-side** environment variables before running the local server or on the deployment. The Vite development middleware routes `/api/*` to the same worker logic; it reads environment variables from the server process. `VITE_` variables are embedded in browser bundles and must not be used for secrets. Without provider keys, the labeled illustrative mode remains available; a live request returns a configuration error.
 
 ## Verify the code
 
