@@ -12,9 +12,12 @@ test('a newly tracked asset reveals the shorter shared period without backfillin
  assert.deepEqual(result.sharedDates,['2026-01-03']);assert.deepEqual(result.excluded.map(x=>x.missingAssets),[['tread'],['tread']]);assert.equal(result.rows[2].tread,100);assert.equal(result.rows[0].btc,null);
 });
 test('invalid dates, future periods, unsupported IDs and oversized requests fail',()=>{
- for(const patch of [{start:'2026-02-30'},{end:'2099-01-01'},{ids:['btc','unknown']},{start:'2010-01-01'}])assert.throws(()=>validateSettings({...settings,...patch}));
+ for(const patch of [{start:'2026-02-30'},{end:'2099-01-01'},{ids:['btc','unknown']},{ids:['btc','constructor']},{start:'2010-01-01'}])assert.throws(()=>validateSettings({...settings,...patch}));
 });
 test('invalid provider shape cannot become apparent market gaps',()=>{assert.throws(()=>buildStudy(settings,{btc:{id:1,quotes:[]}}));});
+test('malformed provider timestamps fail as upstream errors, not absent prices',()=>{
+ assert.throws(()=>buildStudy(settings,{btc:{id:1,quotes:[{timestamp:123,quote:{USD:{price:10}}}]},eth:{id:1027,quotes:[]}}),{status:502});
+});
 test('no credentials returns configuration error instead of synthetic data',async()=>{const r=await handleApi(new Request('https://example.test/api/research',{method:'POST',body:JSON.stringify(settings)}),{});assert.equal(r.status,503);assert.match((await r.json()).error,/not connected/);});
 test('historical quotes adapter includes the first requested date and retains source metadata',async()=>{
  const original=global.fetch;const urls=[];global.fetch=async(url)=>{urls.push(new URL(url));const id=Number(new URL(url).searchParams.get('id'));return Response.json({data:{id,quotes:[q('2026-01-01',10),q('2026-01-02',20)]},status:{error_code:0,timestamp:'2026-01-04T00:00:00Z',credit_count:1}})};
