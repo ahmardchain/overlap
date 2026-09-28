@@ -3,7 +3,7 @@ const DAY=86400000;
 const json=(body,status=200)=>Response.json(body,{status,headers:{'Cache-Control':'no-store'}});
 function fail(message,status=400){throw Object.assign(new Error(message),{status});}
 export function validateSettings(s,now=Date.now()) {
- if(!s||!Array.isArray(s.ids)||s.ids.length<2||s.ids.length>4||new Set(s.ids).size!==s.ids.length||s.ids.some(id=>!CATALOG[id])) fail('Choose two to four supported assets.');
+ if(!s||!Array.isArray(s.ids)||s.ids.length<2||s.ids.length>4||new Set(s.ids).size!==s.ids.length||s.ids.some(id=>!Object.hasOwn(CATALOG,id))) fail('Choose two to four supported assets.');
  for(const key of ['start','end']) if(typeof s[key]!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s[key])||!Number.isFinite(Date.parse(s[key]))||new Date(s[key]).toISOString().slice(0,10)!==s[key]) fail('Use valid calendar dates.');
  const n=(Date.parse(s.end)-Date.parse(s.start))/DAY+1;
  if(n<1||n>366||s.start<new Date(now-365*DAY).toISOString().slice(0,10)||s.end>=new Date(now).toISOString().slice(0,10)) fail('Choose completed UTC days within the past year.');
@@ -18,7 +18,9 @@ export function buildStudy(settings,series){
  for(const id of settings.ids){
   const data=series[id];if(!data||Number(data.id)!==CATALOG[id]||!Array.isArray(data.quotes)) fail('Unexpected CoinMarketCap response. No comparison was created.',502);
   maps[id]={};
-  for(const q of data.quotes){const d=q.timestamp?.slice(0,10);const v=q.quote?.USD?.price;
+  for(const q of data.quotes){
+   if(!q||typeof q.timestamp!=='string') fail('Unexpected CoinMarketCap quote. No comparison was created.',502);
+   const d=q.timestamp.slice(0,10);const v=q.quote?.USD?.price;
    if(!all.includes(d))continue;
    if(Object.hasOwn(maps[id],d)) fail('Duplicate daily observations returned. No comparison was created.',502);
    if(typeof v==='number'&&Number.isFinite(v)&&v>0)maps[id][d]=v;
